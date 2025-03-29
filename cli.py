@@ -1,35 +1,33 @@
-# cli.py
 import argparse
 import logging
 import sys
 import asyncio
 from pathlib import Path
 from typing import Dict
-from core.model import CodeModel
+from core.model import ModelFactory
 from core.analyzer import CodeAnalyzer
 from core.file_handler import FileHandler
-from config import HOME_DIR, SUPPORTED_EXTENSIONS, PROMPTS, DEEPSEEK_API_KEY
+from config import config_manager  # Using ConfigManager
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler('codeoptify.log')]
-)
 logger = logging.getLogger(__name__)
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the CodeOptiFix CLI."""
     parser = argparse.ArgumentParser(description="CodeOptiFix: AI-driven package optimization.")
-    parser.add_argument("--dir", default=str(HOME_DIR), help="Directory to analyze")
+    parser.add_argument("--dir", default=str(config_manager.get("HOME_DIR")), help="Directory to analyze")
     parser.add_argument("--apply", action="store_true", help="Apply proposed changes")
     parser.add_argument("--dry-run", action="store_true", help="Preview changes without applying")
     return parser.parse_args()
 
-async def run_cli_async(args: argparse.Namespace, model: CodeModel, 
-                       file_handler: FileHandler, analyzer: CodeAnalyzer) -> None:
+async def run_cli_async(args: argparse.Namespace, model, file_handler: FileHandler, analyzer: CodeAnalyzer) -> None:
     """Run the CLI workflow asynchronously."""
     try:
+        test_prompt = "Ping"
+        logger.info("Testing API responsiveness")
+        model.generate(test_prompt)
+        
         files = [Path(f) for f in file_handler.scan()]
+        logger.info(f"Scanned files: {[str(f) for f in files]}")
         if not files:
             logger.warning(f"No files found in {args.dir}")
             print(f"No files found in {args.dir}")
@@ -39,7 +37,7 @@ async def run_cli_async(args: argparse.Namespace, model: CodeModel,
             file_handler.proposals_file.unlink()
             logger.info(f"Cleared previous proposals: {file_handler.proposals_file}")
 
-        await asyncio.to_thread(analyzer.process_package, file_handler, [str(f) for f in files])
+        await analyzer.process_package(file_handler, [str(f) for f in files])  # Direct await, no asyncio.to_thread
         proposed_files = analyzer.read_latest_proposal(file_handler)
 
         if not proposed_files:
@@ -69,15 +67,18 @@ async def run_cli_async(args: argparse.Namespace, model: CodeModel,
 def run_cli(args=None) -> None:
     """Main entry point for the CLI."""
     args = args or parse_args()
-    if not DEEPSEEK_API_KEY:
+    if not config_manager.get("DEEPSEEK_API_KEY"):
         logger.warning("DeepSeek API key not found in .env file")
         print("DeepSeek API key not found. Please create a .env file with DEEPSEEK_API_KEY.")
         sys.exit(1)
     
     try:
-        model = CodeModel()
-        file_handler = FileHandler(args.dir, SUPPORTED_EXTENSIONS)
-        analyzer = CodeAnalyzer(model, PROMPTS)
+        model = ModelFactory.create_model({
+            'model_type': config_manager.get('MODEL_TYPE'),
+            'api_key': config_manager.get('DEEPSEEK_API_KEY')
+        })
+        file_handler = FileHandler(args.dir, config_manager.get('SUPPORTED_EXTENSIONS'))
+        analyzer = CodeAnalyzer(model, config_manager.get('PROMPTS'))
         asyncio.run(run_cli_async(args, model, file_handler, analyzer))
     except Exception as e:
         logger.error(f"CLI execution error: {e}", exc_info=True)

@@ -1,37 +1,51 @@
 # config.py
+from pathlib import Path
+from typing import Dict, Any
+from dotenv import load_dotenv
 import os
 import json
-from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
+class ConfigManager:
+    def __init__(self, env_file: str = ".env"):
+        load_dotenv(env_file)
+        self.home_dir = Path(__file__).parent
+        self.defaults = {
+            "MODEL_TYPE": "deepseek",
+            "MODEL_ID": "deepseek-reasoner",
+            "DEEPSEEK_API_KEY": "",
+            "DEEPSEEK_API_BASE": "https://api.deepseek.com",
+            "MAX_TOKENS": 8192,
+            "SUPPORTED_EXTENSIONS": (".py", ".js", ".cpp"),
+            "LOCAL_MODEL_ID": "TheBloke/deepseek-coder-6.7B-base-AWQ",
+            "LOCAL_MODEL_PATH": self.home_dir / "deepseek-coder-6.7B-base-AWQ",
+            "HOME_DIR": self.home_dir  # Added HOME_DIR explicitly
+        }
+        self.config: Dict[str, Any] = {}
 
-"""Supported file extensions and base directory"""
-SUPPORTED_EXTENSIONS = (".py", ".js", ".cpp")
-HOME_DIR = Path(__file__).parent
+    def load(self) -> None:
+        for key, default in self.defaults.items():
+            self.config[key] = os.getenv(key, default)
+        self._validate()
+        self.config["PROMPTS"] = self._load_prompts()
 
-"""Deepseek API configuration"""
-MODEL_TYPE = os.getenv("MODEL_TYPE", "deepseek")
-MODEL_ID = os.getenv("MODEL_ID", "deepseek-reasoner")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-DEEPSEEK_API_BASE = os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com")
-if MODEL_TYPE == "deepseek" and not DEEPSEEK_API_KEY:
-    raise ValueError("DEEPSEEK_API_KEY is required when using deepseek model type")
+    def _validate(self) -> None:
+        if self.config["MODEL_TYPE"] == "deepseek" and not self.config["DEEPSEEK_API_KEY"]:
+            raise ValueError("DEEPSEEK_API_KEY required for deepseek model")
 
-"""General model settings"""
-MAX_TOKENS = 4096
+    def _load_prompts(self) -> Dict[str, str]:
+        prompts_file = self.home_dir / "prompts.json"
+        try:
+            with open(prompts_file, "r") as f:
+                prompts = json.load(f)
+            required = {"analyze", "assess", "propose"}
+            if missing := required - set(prompts.keys()):
+                raise ValueError(f"Missing prompt keys: {missing}")
+            return prompts
+        except Exception as e:
+            raise ValueError(f"Failed to load prompts: {e}")
 
-"""Local model configuration"""
-LOCAL_MODEL_ID = "TheBloke/deepseek-coder-6.7B-base-AWQ"
-LOCAL_MODEL_PATH = Path("/mnt/c/Users/dfoss/Desktop/LocalAIModels/deepseek-coder-6.7B-base-AWQ")
+    def get(self, key: str) -> Any:
+        return self.config.get(key, self.defaults.get(key))
 
-try:
-    with open(HOME_DIR / "prompts.json", "r") as f:
-        PROMPTS = json.load(f)
-except (IOError, json.JSONDecodeError) as e:
-    raise ValueError(f"Failed to load prompts: {str(e)}")
-
-required_keys = {"analyze", "assess", "propose"}
-missing_keys = required_keys - PROMPTS.keys()
-if missing_keys:
-    raise ValueError(f"PROMPTS missing required keys: {missing_keys}")
+config_manager = ConfigManager()
+config_manager.load()
