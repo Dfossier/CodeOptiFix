@@ -1,0 +1,13 @@
+{
+  "cycle_id": "20250408_211031_ee56b57f",
+  "start_time": "2025-04-08T21:10:31.351203",
+  "metadata": {},
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-08T21:10:44.418724",
+  "status": "error",
+  "summary": {
+    "error": "'transformation_type'",
+    "traceback": "Traceback (most recent call last):\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/improvement_orchestrator.py\", line 45, in execute_cycle\n    cycle_plan = await self.cycle_planner.plan_cycle(goals, metadata)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/cycle_planner.py\", line 58, in plan_cycle\n    \"strategy\": self._determine_execution_strategy(prioritized_goals[:max_goals])\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/cycle_planner.py\", line 67, in _determine_execution_strategy\n    transformation_types = [g[\"validation\"][\"transformation_type\"] for g in prioritized_goals]\n                            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\nKeyError: 'transformation_type'\n"
+  }
+}

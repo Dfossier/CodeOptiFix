@@ -1,0 +1,323 @@
+"""
+Update Generator for the Self-Improving AI Assistant.
+
+Main module that orchestrates the code generation process by integrating
+the Code Analyzer, LLM Synthesizer, Post Processor, and Output Formatter.
+"""
+import argparse
+import asyncio
+import json
+import os
+import shutil
+import sys
+import time
+from pathlib import Path
+from typing import Dict, List, Optional, Any, Union
+
+import config
+import utils
+from utils import UpdateGeneratorError, setup_logging
+from interfaces import ImprovementGoal, CodeCandidate, PerformanceAnalyzerInterface, TestingSandboxInterface
+from code_analyzer import CodeAnalyzer
+from llm_synthesizer import LLMSynthesizer
+from post_processor import PostProcessor
+from output_formatter import OutputFormatter
+
+logger = setup_logging(__name__)
+
+class UpdateGenerator:
+    """
+    Main class that orchestrates the code improvement generation process.
+    
+    Integrates the four main components:
+    1. Code Analyzer
+    2. LLM Synthesizer
+    3. Post Processor
+    4. Output Formatter
+    """
+    
+    def __init__(self, base_path: Optional[Path] = None):
+        """
+        Initialize the Update Generator.
+        
+        Args:
+            base_path: Base path of the codebase to improve
+        """
+        self.logger = logger
+        self.base_path = base_path or Path.cwd()
+        
+        # Initialize components
+        self.code_analyzer = CodeAnalyzer(self.base_path)
+        self.llm_synthesizer = LLMSynthesizer()
+        self.post_processor = PostProcessor()
+        self.output_formatter = OutputFormatter()
+        
+        self.logger.info(f"Update Generator initialized with base path: {self.base_path}")
+    
+    async def generate_update(
+        self, 
+        goal: ImprovementGoal,
+        num_candidates: int = 1,
+        output_dir: Optional[Path] = None
+    ) -> List[CodeCandidate]:
+        """
+        Generate code updates for a specific improvement goal.
+        
+        Args:
+            goal: The improvement goal to address
+            num_candidates: Number of candidate solutions to generate
+            output_dir: Directory to save the output (optional)
+            
+        Returns:
+            List of generated code candidates
+        """
+        try:
+            self.logger.info(f"Generating update for goal: {goal.description}")
+            start_time = time.time()
+            
+            # Step 1: Analyze the code to improve
+            self.logger.info("Step 1: Analyzing code...")
+            if goal.target_function:
+                code_context = self.code_analyzer.analyze_function(
+                    goal.target_module, goal.target_function
+                )
+            else:
+                module_info = self.code_analyzer.analyze_module(goal.target_module)
+                code_context = {"module_info": module_info}
+            
+            # Step 2: Generate candidate improvements
+            self.logger.info(f"Step 2: Generating {num_candidates} candidates...")
+            candidates = await self.llm_synthesizer.generate_candidates(
+                goal, code_context, num_candidates
+            )
+            
+            # Step 3: Post-process the candidates
+            self.logger.info("Step 3: Post-processing candidates...")
+            processed_candidates = []
+            for i, candidate in enumerate(candidates):
+                try:
+                    processed = self.post_processor.process_candidate(candidate)
+                    processed_candidates.append(processed)
+                except Exception as e:
+                    self.logger.error(f"Error post-processing candidate {i}: {str(e)}")
+            
+            # Step 4: Save the results if output_dir is provided
+            if output_dir:
+                output_dir = Path(output_dir)
+                os.makedirs(output_dir, exist_ok=True)
+                self.logger.info(f"Step 4: Saving results to {output_dir}...")
+                
+                for i, candidate in enumerate(processed_candidates):
+                    output_path = output_dir / f"candidate_{i+1}.json"
+                    self.output_formatter.save_candidate(candidate, output_path)
+                
+                batch_path = output_dir / "all_candidates.json"
+                self.output_formatter.save_batch(processed_candidates, batch_path)
+            
+            elapsed_time = time.time() - start_time
+            self.logger.info(
+                f"Update generation completed in {elapsed_time:.2f} seconds. "
+                f"Generated {len(processed_candidates)} candidates."
+            )
+            
+            return processed_candidates
+            
+        except Exception as e:
+            self.logger.error(f"Error generating update: {str(e)}")
+            raise UpdateGeneratorError(f"Failed to generate update: {str(e)}")
+    
+    async def batch_process(
+        self, 
+        goals_file: Union[str, Path],
+        output_dir: Union[str, Path],
+        candidates_per_goal: int = 1
+    ) -> Dict[str, List[CodeCandidate]]:
+        """
+        Process a batch of improvement goals and apply the best candidate to the codebase.
+        
+        Args:
+            goals_file: Path to the JSON file containing improvement goals
+            output_dir: Directory to save the output
+            candidates_per_goal: Number of candidates to generate per goal
+            
+        Returns:
+            Dictionary mapping goal descriptions to lists of candidates
+        """
+        output_dir = Path(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Load goals from file
+        goals = PerformanceAnalyzerInterface.load_goals(goals_file)
+        
+        # Process goals
+        self.logger.info(f"Processing batch of {len(goals)} goals...")
+        results = {}
+        
+        for i, goal in enumerate(goals):
+            goal_dir = output_dir / f"goal_{i+1}"
+            os.makedirs(goal_dir, exist_ok=True)
+            
+            # Save goal details
+            with open(goal_dir / "goal.json", 'w', encoding='utf-8') as f:
+                json.dump(goal.to_dict(), f, indent=2)
+            
+            # Generate candidates for this goal
+            self.logger.info(f"Processing goal {i+1}/{len(goals)}: {goal.description}")
+            try:
+                candidates = await self.generate_update(
+                    goal, 
+                    num_candidates=candidates_per_goal,
+                    output_dir=goal_dir
+                )
+                results[goal.description] = candidates
+                
+                # Submit to Testing Sandbox and apply the best candidate
+                for j, candidate in enumerate(candidates):
+                    output_path = goal_dir / f"candidate_{j+1}_for_testing.json"
+                    TestingSandboxInterface.submit_candidate(candidate, output_path)
+                
+                if candidates:
+                    best_candidate = await self._select_best_candidate(candidates, goal, goal_dir)
+                    if best_candidate:
+                        self._apply_candidate(best_candidate, goal.target_module)
+                        self._verify_update(goal, goal.target_module)
+                    else:
+                        self.logger.warning(f"No valid candidate selected for goal: {goal.description}")
+                
+            except Exception as e:
+                self.logger.error(f"Error processing goal {i+1}: {str(e)}")
+                results[goal.description] = []
+        
+        self.logger.info(f"Batch processing completed. Results saved to {output_dir}")
+        return results
+    
+    async def _select_best_candidate(
+        self, candidates: List[CodeCandidate], goal: ImprovementGoal, goal_dir: Path
+    ) -> Optional[CodeCandidate]:
+        """
+        Select the best candidate based on basic validation (placeholder for testing results).
+        
+        Args:
+            candidates: List of processed candidates
+            goal: The improvement goal
+            goal_dir: Directory where testing results might be stored
+            
+        Returns:
+            Best CodeCandidate or None if no valid candidate
+        """
+        self.logger.info(f"Selecting best candidate for goal: {goal.description}")
+        if not candidates:
+            self.logger.warning("No candidates available to select from")
+            return None
+        
+        # Placeholder: Use first candidate with basic goal-specific validation
+        for candidate in candidates:
+            if self._is_candidate_valid_for_goal(candidate, goal):
+                self.logger.info("Selected best candidate based on basic validation")
+                return candidate
+        
+        self.logger.warning("No candidate passed basic validation")
+        return None  # TODO: Integrate TestingSandboxInterface results
+    
+    def _is_candidate_valid_for_goal(self, candidate: CodeCandidate, goal: ImprovementGoal) -> bool:
+        """
+        Basic validation to check if candidate addresses the goal.
+        
+        Args:
+            candidate: The candidate to validate
+            goal: The improvement goal
+            
+        Returns:
+            True if candidate appears to address the goal, False otherwise
+        """
+        code = candidate.code.lower()
+        desc = goal.description.lower()
+        
+        if "replace print with proper logging" in desc:
+            return "logging." in code and "print(" not in code
+        elif "add specific exception handling" in desc:
+            return "except " in code and "except:" not in code
+        elif "add support for additional file formats" in desc:
+            return any(fmt in code for fmt in ["yaml", "toml", "xml"])
+        return True  # Default pass if no specific check
+    
+    def _apply_candidate(self, candidate: CodeCandidate, target_module: str) -> None:
+        """
+        Apply the candidate code to the target module file with backup.
+        
+        Args:
+            candidate: The CodeCandidate to apply
+            target_module: The relative path to the target module file
+        """
+        module_path = self.base_path / target_module
+        backup_path = module_path.with_suffix(module_path.suffix + ".bak")
+        
+        self.logger.info(f"Applying candidate to {module_path}")
+        try:
+            # Backup original file
+            if module_path.exists():
+                shutil.copy2(module_path, backup_path)
+                self.logger.debug(f"Backed up {module_path} to {backup_path}")
+            
+            # Write new code
+            module_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(module_path, 'w', encoding='utf-8') as f:
+                f.write(candidate.code)
+            self.logger.info(f"Successfully applied candidate to {module_path}")
+        except Exception as e:
+            self.logger.error(f"Failed to apply candidate to {module_path}: {str(e)}")
+            # Restore backup if it exists
+            if backup_path.exists():
+                shutil.move(backup_path, module_path)
+                self.logger.info(f"Restored backup to {module_path}")
+            raise UpdateGeneratorError(f"Error applying candidate: {str(e)}")
+    
+    def _verify_update(self, goal: ImprovementGoal, target_module: str) -> None:
+        """
+        Verify that the update addressed the goal.
+        
+        Args:
+            goal: The improvement goal
+            target_module: The updated module path
+        """
+        self.logger.info(f"Verifying update for goal: {goal.description}")
+        module_path = self.base_path / target_module
+        try:
+            with open(module_path, 'r', encoding='utf-8') as f:
+                updated_code = f.read().lower()
+            
+            if not self._is_candidate_valid_for_goal(
+                CodeCandidate(code=updated_code, comments="", metadata={}), goal
+            ):
+                self.logger.warning(f"Update verification failed for {goal.description}")
+            else:
+                self.logger.info("Update verification passed")
+        except Exception as e:
+            self.logger.error(f"Verification failed: {str(e)}")
+
+async def main():
+    """Command-line entry point."""
+    parser = argparse.ArgumentParser(description="Update Generator for Self-Improving AI Assistant")
+    parser.add_argument("--goal", "-g", help="Path to a JSON file containing a single improvement goal")
+    parser.add_argument("--batch", "-b", help="Path to a JSON file containing multiple improvement goals")
+    parser.add_argument("--output", "-o", default=str(config.OUTPUT_DIR), help="Directory to save the output")
+    parser.add_argument("--candidates", "-c", type=int, default=1, help="Number of candidates to generate per goal")
+    parser.add_argument("--format", "-f", choices=["json", "text"], default="json", help="Output format")
+    
+    args = parser.parse_args()
+    if not args.goal and not args.batch:
+        parser.error("Either --goal or --batch must be specified")
+    
+    generator = UpdateGenerator()
+    generator.output_formatter = OutputFormatter(args.format)
+    
+    if args.goal:
+        with open(args.goal, 'r', encoding='utf-8') as f:
+            goal_data = json.load(f)
+        goal = ImprovementGoal.from_dict(goal_data)
+        await generator.generate_update(goal, num_candidates=args.candidates, output_dir=args.output)
+    elif args.batch:
+        await generator.batch_process(args.batch, args.output, candidates_per_goal=args.candidates)
+
+if __name__ == "__main__":
+    asyncio.run(main())

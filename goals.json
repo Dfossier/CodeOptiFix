@@ -1,0 +1,37 @@
+[
+  {
+    "target_module": "llm_synthesizer.py",
+    "target_function": null,
+    "description": "Improve Replace print with proper logging in error handling",
+    "performance_target": null,
+    "priority": 5
+  },
+  {
+    "target_module": "config.py",
+    "target_function": null,
+    "description": "Improve Add error handling for string to float conversion in conditional logic",
+    "performance_target": null,
+    "priority": 4
+  },
+  {
+    "target_module": "utils.py",
+    "target_function": null,
+    "description": "Add missing class docstring in error handling",
+    "performance_target": null,
+    "priority": 4
+  },
+  {
+    "target_module": "code_analyzer.py",
+    "target_function": null,
+    "description": "Add Add structured logging for better analytics in code",
+    "performance_target": null,
+    "priority": 4
+  },
+  {
+    "target_module": "interfaces.py",
+    "target_function": null,
+    "description": "Add Consider timezone handling in code",
+    "performance_target": null,
+    "priority": 4
+  }
+]

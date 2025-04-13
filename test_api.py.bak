@@ -1,0 +1,40 @@
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger(__name__)
+
+
+def process_json_data(json_data: Union[Dict, List, str]) -> Optional[Dict]:
+    try:
+        if isinstance(json_data, str):
+            logger.debug("Parsing JSON string")
+            parsed = json.loads(json_data)
+        else:
+            parsed = json_data
+        logger.info(f"Successfully processed JSON data: {json.dumps(parsed, indent=2)}")
+        return parsed
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode JSON: {e}\nInput data: {json_data}")
+        logger.debug(traceback.format_exc())
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error processing JSON: {e}")
+        logger.debug(traceback.format_exc())
+        return None
+
+
+def save_json_to_file(data: Dict, file_path: Path) -> bool:
+    try:
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=2)
+        logger.info(f"Successfully saved JSON to {file_path}")
+        return True
+    except IOError as e:
+        logger.error(f"Failed to write JSON to {file_path}: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error saving JSON: {e}")
+        logger.debug(traceback.format_exc())
+        return False

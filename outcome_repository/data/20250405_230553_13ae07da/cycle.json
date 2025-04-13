@@ -1,0 +1,22 @@
+{
+  "cycle_id": "20250405_230553_13ae07da",
+  "start_time": "2025-04-05T23:05:53.429114",
+  "metadata": {
+    "mode": "continuous",
+    "cycle_number": 1,
+    "command_line_args": {
+      "goals_file": null,
+      "output": null,
+      "continuous": true,
+      "interval": 3600,
+      "max_cycles": null
+    }
+  },
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-05T23:06:08.114386",
+  "status": "skipped",
+  "summary": {
+    "reason": "No valid goals"
+  }
+}

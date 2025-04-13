@@ -1,0 +1,11 @@
+Add support for this program to be able to read and analyze its own error logs, so that it can make adjustments on its next attempt.
+
+This should include the ability to scan through log files in the logs directory, extract error messages and their contexts, and use this information to adjust the approach in subsequent improvement cycles.
+
+Specifically, the system should:
+1. Be able to identify which parts of its transformations are failing
+2. Understand the error patterns to avoid repeating the same mistakes
+3. Make adjustments to its transformation logic based on previous failures
+4. Keep a record of what strategies work best for different types of code patterns
+
+This ability to learn from its own failures will make the system more effective over time and enable more sophisticated self-improvement capabilities.

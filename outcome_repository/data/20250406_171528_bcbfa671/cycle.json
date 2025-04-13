@@ -1,0 +1,12 @@
+{
+  "cycle_id": "20250406_171528_bcbfa671",
+  "start_time": "2025-04-06T17:15:28.905449",
+  "metadata": {},
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-06T17:15:41.300345",
+  "status": "skipped",
+  "summary": {
+    "reason": "No valid goals"
+  }
+}

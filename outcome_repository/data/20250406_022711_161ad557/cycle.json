@@ -1,0 +1,13 @@
+{
+  "cycle_id": "20250406_022711_161ad557",
+  "start_time": "2025-04-06T02:27:11.340366",
+  "metadata": {},
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-06T02:27:22.844246",
+  "status": "error",
+  "summary": {
+    "error": "'dict' object has no attribute 'description'",
+    "traceback": "Traceback (most recent call last):\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/improvement_orchestrator.py\", line 84, in execute_cycle\n    cycle_plan = await self.cycle_planner.plan_cycle(goals, metadata)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/cycle_planner.py\", line 77, in plan_cycle\n    validations = self.goal_validator.validate_goals(goals)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/goal_intelligence/goal_validator.py\", line 114, in validate_goals\n    return [self.validate_goal(goal) for goal in goals]\n            ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/goal_intelligence/goal_validator.py\", line 45, in validate_goal\n    self.logger.info(f\"Validating goal: {goal.description}\")\n                                         ^^^^^^^^^^^^^^^^\nAttributeError: 'dict' object has no attribute 'description'\n"
+  }
+}

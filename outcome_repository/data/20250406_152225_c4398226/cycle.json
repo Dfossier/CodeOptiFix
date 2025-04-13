@@ -1,0 +1,12 @@
+{
+  "cycle_id": "20250406_152225_c4398226",
+  "start_time": "2025-04-06T15:22:25.369346",
+  "metadata": {},
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-06T15:22:38.448691",
+  "status": "skipped",
+  "summary": {
+    "reason": "No valid goals"
+  }
+}

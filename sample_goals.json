@@ -1,0 +1,25 @@
+[
+  {
+    "target_module": "update_generator.py",
+    "target_function": "generate_updates",
+    "description": "Replace print statements with proper logging",
+    "priority": 1
+  },
+  {
+    "target_module": "post_processor.py",
+    "target_function": "some_function",
+    "description": "Add specific exception handling",
+    "priority": 2
+  },
+  {
+    "target_module": "goal_generator.py",
+    "description": "Split file into smaller modules",
+    "priority": 3
+  },
+  {
+    "target_module": "code_analyzer.py",
+    "target_function": "_extract_functions",
+    "description": "Extract complex code blocks into separate functions",
+    "priority": 2
+  }
+]

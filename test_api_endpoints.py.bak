@@ -1,0 +1,13 @@
+import os
+import sys
+import json
+import logging
+import traceback
+from pathlib import Path
+from openai import OpenAI
+from dotenv import load_dotenv
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
+logger = logging.getLogger(__name__)
+logger.info('Loading environment variables')
+logger.error(f'Error occurred: {e}', exc_info=True)
+logger.info('API call successful')

@@ -1,0 +1,23 @@
+[
+  {
+    "target_module": "post_processor.py",
+    "target_function": null,
+    "description": "Improve Replace print with proper logging in error handling",
+    "performance_target": null,
+    "priority": 5
+  },
+  {
+    "target_module": "test_api.py",
+    "target_function": null,
+    "description": "Improve Add specific exception handling in JSON processing",
+    "performance_target": null,
+    "priority": 5
+  },
+  {
+    "target_module": "test_api.py",
+    "target_function": null,
+    "description": "Add Add support for additional file formats in JSON processing",
+    "performance_target": null,
+    "priority": 4
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "goal_id": "goal_27be1a45",
+  "cycle_id": "20250412_115327_7abb1a8c",
+  "timestamp": "2025-04-12T11:53:53.618297",
+  "goal": {
+    "target_module": "test_goal_parser.py",
+    "description": "Module has 20 print statements to replace",
+    "priority": 1,
+    "type": "replace_print_with_logging",
+    "target_function": null,
+    "performance_target": null
+  },
+  "validation": {
+    "goal": {
+      "target_module": "test_goal_parser.py",
+      "description": "Module has 20 print statements to replace",
+      "priority": 1,
+      "type": "replace_print_with_logging",
+      "target_function": null,
+      "performance_target": null
+    },
+    "is_valid": true,
+    "reason": "Goal refined successfully",
+    "refined": true
+  },
+  "transformations": [],
+  "status": "pending"
+}

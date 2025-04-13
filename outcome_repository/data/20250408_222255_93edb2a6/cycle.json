@@ -1,0 +1,13 @@
+{
+  "cycle_id": "20250408_222255_93edb2a6",
+  "start_time": "2025-04-08T22:22:55.098924",
+  "metadata": {},
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-08T22:23:06.841889",
+  "status": "error",
+  "summary": {
+    "error": "'dict' object has no attribute 'to_dict'",
+    "traceback": "Traceback (most recent call last):\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/improvement_orchestrator.py\", line 45, in execute_cycle\n    cycle_plan = await self.cycle_planner.plan_cycle(goals, metadata)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/cycle_planner.py\", line 61, in plan_cycle\n    self.outcome_logger.log_goal(prioritized_goal[\"goal\"], prioritized_goal[\"validation\"], self.current_cycle_id)\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/outcome_repository/outcome_logger.py\", line 166, in log_goal\n    \"goal\": goal.to_dict(),\n            ^^^^^^^^^^^^\nAttributeError: 'dict' object has no attribute 'to_dict'\n"
+  }
+}

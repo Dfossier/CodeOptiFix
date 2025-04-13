@@ -1,0 +1,23 @@
+[
+  {
+    "target_module": "scheduler.py",
+    "target_function": "schedule_task",
+    "description": "Add weekend exclusion to scheduler to prevent tasks from running on weekends",
+    "performance_target": "<100ms execution time",
+    "priority": 2
+  },
+  {
+    "target_module": "logger.py",
+    "target_function": "log_event",
+    "description": "Improve log formatting to include timestamp in ISO format",
+    "performance_target": "<50ms execution time",
+    "priority": 3
+  },
+  {
+    "target_module": "data_processor.py",
+    "target_function": "process_batch",
+    "description": "Optimize batch processing to reduce memory usage by streaming data",
+    "performance_target": "<500MB peak memory usage",
+    "priority": 1
+  }
+]

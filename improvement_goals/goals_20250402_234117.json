@@ -1,0 +1,23 @@
+[
+  {
+    "target_module": "post_processor.py",
+    "target_function": null,
+    "description": "Improve Replace print with proper logging in error handling",
+    "performance_target": null,
+    "priority": 5
+  },
+  {
+    "target_module": "test_api.py",
+    "target_function": null,
+    "description": "Improve Replace print with proper logging in JSON processing",
+    "performance_target": null,
+    "priority": 5
+  },
+  {
+    "target_module": "test_api.py",
+    "target_function": null,
+    "description": "Add Add structured logging for better analytics in iteration",
+    "performance_target": null,
+    "priority": 4
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "cycle_id": "20250406_024311_638fe62c",
+  "status": "error",
+  "summary": {
+    "error": "'description'",
+    "traceback": "Traceback (most recent call last):\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/improvement_orchestrator.py\", line 84, in execute_cycle\n    cycle_plan = await self.cycle_planner.plan_cycle(goals, metadata)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/cycle_planner.py\", line 87, in plan_cycle\n    refined_goals = self.goal_refiner.refine_goals(validations)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/goal_intelligence/goal_refiner.py\", line 115, in refine_goals\n    return [self.refine_goal(validation) for validation in goal_validations]\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/goal_intelligence/goal_refiner.py\", line 46, in refine_goal\n    self.logger.info(f\"Refining goal: {goal_validation['goal']['description']}\")\n                                       ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^\nKeyError: 'description'\n"
+  },
+  "start_time": "2025-04-06T02:43:11.192695",
+  "end_time": "2025-04-06T02:43:25.087719",
+  "goals_count": 0,
+  "transformations_count": 0
+}

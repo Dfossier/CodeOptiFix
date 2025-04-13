@@ -1,0 +1,23 @@
+{
+  "start_time": "2025-04-12T20:43:10.030048",
+  "metadata": {},
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-12T20:43:15.382586",
+  "status": "error",
+  "summary": {
+    "success": false,
+    "cycle_id": "da979650-c3d6-48a8-a775-65ef64ad94cf",
+    "goals_processed": 0,
+    "transformations": [
+      {
+        "status": "error",
+        "message": "object of type 'coroutine' has no len()",
+        "goal": {
+          "description": "Cycle execution failure"
+        }
+      }
+    ],
+    "metadata": {}
+  }
+}

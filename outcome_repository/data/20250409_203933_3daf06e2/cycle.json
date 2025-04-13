@@ -1,0 +1,13 @@
+{
+  "cycle_id": "20250409_203933_3daf06e2",
+  "start_time": "2025-04-09T20:39:33.448796",
+  "metadata": {},
+  "goals": [],
+  "transformations": [],
+  "end_time": "2025-04-09T20:39:44.045093",
+  "status": "error",
+  "summary": {
+    "error": "'description'",
+    "traceback": "Traceback (most recent call last):\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/improvement_orchestrator.py\", line 45, in execute_cycle\n    cycle_plan = await self.cycle_planner.plan_cycle(goals, metadata)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/cycle_planner.py\", line 61, in plan_cycle\n    self.outcome_logger.log_goal(prioritized_goal[\"goal\"], prioritized_goal[\"validation\"], self.current_cycle_id)\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/outcome_repository/outcome_logger.py\", line 196, in log_goal\n    self.logger.info(f\"Logged goal: {goal_id} - {goal['description']}\")\n                                                 ~~~~^^^^^^^^^^^^^^^\nKeyError: 'description'\n"
+  }
+}

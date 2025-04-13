@@ -1,0 +1,7 @@
+{
+  "target_module": "scheduler.py",
+  "target_function": "schedule_task",
+  "description": "Add weekend exclusion to scheduler to prevent tasks from running on weekends",
+  "performance_target": "<100ms execution time",
+  "priority": 2
+}

@@ -1,0 +1,12 @@
+{
+  "cycle_id": "20250406_025321_51b1e391",
+  "status": "error",
+  "summary": {
+    "error": "'CodeStateManager' object has no attribute 'get_files'",
+    "traceback": "Traceback (most recent call last):\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/improvement_orchestrator.py\", line 84, in execute_cycle\n    cycle_plan = await self.cycle_planner.plan_cycle(goals, metadata)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/orchestrator/cycle_planner.py\", line 77, in plan_cycle\n    validations = self.goal_validator.validate_goals(goals)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/goal_intelligence/goal_validator.py\", line 56, in validate_goals\n    return [self.validate_goal(goal) for goal in goals]\n            ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/c/Users/dfoss/Desktop/LocalAIModels/CodeOptiFix2/goal_intelligence/goal_validator.py\", line 34, in validate_goal\n    if not file_path or file_path not in self.code_state_manager.get_files():\n                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'CodeStateManager' object has no attribute 'get_files'\n"
+  },
+  "start_time": "2025-04-06T02:53:21.448748",
+  "end_time": "2025-04-06T02:53:35.095388",
+  "goals_count": 0,
+  "transformations_count": 0
+}
