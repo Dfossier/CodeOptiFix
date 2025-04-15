@@ -1,36 +1,41 @@
 [
   {
-    "target_module": "llm_synthesizer.py",
-    "target_function": null,
+    "target_module": "code_updater.py",
     "description": "Improve Replace print with proper logging in error handling",
+    "type": "",
+    "target_function": null,
     "performance_target": null,
     "priority": 5
   },
   {
-    "target_module": "config.py",
+    "target_module": "observatory/dependency_mapper.py",
+    "description": "Improve Add default value to dictionary get method in iteration",
+    "type": "",
     "target_function": null,
-    "description": "Improve Add error handling for string to float conversion in conditional logic",
+    "performance_target": null,
+    "priority": 5
+  },
+  {
+    "target_module": "code_updater.py",
+    "description": "Add Add structured logging for better analytics in conditional logic",
+    "type": "",
+    "target_function": null,
     "performance_target": null,
     "priority": 4
   },
   {
-    "target_module": "utils.py",
+    "target_module": "goal_intelligence/goal_processor.py",
+    "description": "Optimize String concatenation optimization in iteration",
+    "type": "",
     "target_function": null,
-    "description": "Add missing class docstring in error handling",
-    "performance_target": null,
+    "performance_target": "<50ms execution time",
     "priority": 4
   },
   {
-    "target_module": "code_analyzer.py",
+    "target_module": "goal_intelligence/goal_refiner.py",
+    "description": "Document return values in iteration",
+    "type": "",
     "target_function": null,
-    "description": "Add Add structured logging for better analytics in code",
-    "performance_target": null,
-    "priority": 4
-  },
-  {
-    "target_module": "interfaces.py",
-    "target_function": null,
-    "description": "Add Consider timezone handling in code",
     "performance_target": null,
     "priority": 4
   }

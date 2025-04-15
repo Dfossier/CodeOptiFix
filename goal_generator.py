@@ -1,6 +1,4 @@
 """
-logger = logging.getLogger(__name__)
-"""
 Goal Generator module for the Self-Improving AI Assistant Update Generator.
 
 Analyzes code to autonomously identify potential improvement opportunities
@@ -21,6 +19,7 @@ import utils
 from utils import setup_logging
 from interfaces import ImprovementGoal
 from code_analyzer import CodeAnalyzer
+
 logger = setup_logging(__name__)
 
 class GoalGenerator:
@@ -36,7 +35,59 @@ class GoalGenerator:
         self.logger = logger
         self.base_path = base_path or Path.cwd()
         self.code_analyzer = CodeAnalyzer(self.base_path)
-        self.patterns = {'performance': [('for\\s+\\w+\\s+in\\s+range\\(\\w+\\)', 'Loop optimization potential'), ('\\.append\\(.*\\).*for\\s+', 'List comprehension opportunity'), ('time\\.sleep\\(', 'Consider async patterns for I/O operations'), ('import\\s+pandas|import\\s+numpy', 'Data processing optimization potential'), ('open\\(.*\\).*read\\(\\)', 'Optimize file reading with context manager'), ('\\.join\\(.*\\)', 'String concatenation optimization')], 'reliability': [('except\\s*:', 'Add specific exception handling'), ('assert\\s+', 'Consider converting asserts to proper validation'), ('print\\(.*error|exception', 'Replace print with proper logging'), ('float\\(.*\\)', 'Add error handling for string to float conversion'), ('\\.get\\(.*\\)', 'Add default value to dictionary get method'), ('os\\.path\\.', 'Add file existence checks')], 'maintainability': [('#\\s*TODO', 'Address TODO comment'), ('if\\s+.*if\\s+.*if', 'Reduce nested conditionals'), ('def\\s+\\w+\\([^)]{100,}\\)', 'Function with too many parameters'), ('(\\w+)\\s*=\\s*\\1\\s*\\+\\s*', 'Consider using augmented assignment'), ('([\\"\']).*\\1.*\\+', 'Use f-strings instead of concatenation'), ('\\t', 'Replace tabs with spaces for consistent formatting')], 'features': [('datetime\\.|date\\.', 'Consider timezone handling'), ('weekday|monday|tuesday|wednesday|thursday|friday|saturday|sunday', 'Add weekend/holiday handling'), ('password|auth|login', 'Add additional security measures'), ('\\.csv|\\.json|\\.xml', 'Add support for additional file formats'), ('logging\\.|logger\\.', 'Add structured logging for better analytics')], 'security': [('subprocess\\.', 'Enhance subprocess security checks'), ('eval\\(|exec\\(', 'Replace dangerous eval/exec functions'), ('\\.read_csv\\(|\\.read_json\\(', 'Add input validation for data loading'), ('jwt\\.|token', 'Improve token security measures'), ('\\.execute\\(', 'Add SQL injection protection')], 'testing': [('def test_', 'Expand test coverage'), ('@pytest', 'Add more test assertions'), ('assert ', 'Improve test assertions with better messages'), ('mock\\.|patch\\.', 'Enhance test mocking strategies')], 'documentation': [('def [^\\"\']*\\):', 'Add missing function docstring'), ('class [^\\"\']*:', 'Add missing class docstring'), (':[^\\n]*\\n\\s*[^\\s#]', 'Add missing parameter documentation'), ('return [^#\\n]*', 'Document return values')]}
+        self.patterns = {
+            'performance': [
+                ('for\\s+\\w+\\s+in\\s+range\\(\\w+\\)', 'Loop optimization potential'),
+                ('\\.append\\(.*\\).*for\\s+', 'List comprehension opportunity'),
+                ('time\\.sleep\\(', 'Consider async patterns for I/O operations'),
+                ('import\\s+pandas|import\\s+numpy', 'Data processing optimization potential'),
+                ('open\\(.*\\).*read\\(\\)', 'Optimize file reading with context manager'),
+                ('\\.join\\(.*\\)', 'String concatenation optimization')
+            ],
+            'reliability': [
+                ('except\\s*:', 'Add specific exception handling'),
+                ('assert\\s+', 'Consider converting asserts to proper validation'),
+                ('print\\(.*error|exception', 'Replace print with proper logging'),
+                ('float\\(.*\\)', 'Add error handling for string to float conversion'),
+                ('\\.get\\(.*\\)', 'Add default value to dictionary get method'),
+                ('os\\.path\\.', 'Add file existence checks')
+            ],
+            'maintainability': [
+                ('#\\s*TODO', 'Address TODO comment'),
+                ('if\\s+.*if\\s+.*if', 'Reduce nested conditionals'),
+                ('def\\s+\\w+\\([^)]{100,}\\)', 'Function with too many parameters'),
+                ('(\\w+)\\s*=\\s*\\1\\s*\\+\\s*', 'Consider using augmented assignment'),
+                ('([\\"\']).*\\1.*\\+', 'Use f-strings instead of concatenation'),
+                ('\\t', 'Replace tabs with spaces for consistent formatting'),
+                ('def\\s+\\w+\\(', 'Add docstring to function')
+            ],
+            'features': [
+                ('datetime\\.|date\\.', 'Consider timezone handling'),
+                ('weekday|monday|tuesday|wednesday|thursday|friday|saturday|sunday', 'Add weekend/holiday handling'),
+                ('password|auth|login', 'Add additional security measures'),
+                ('\\.csv|\\.json|\\.xml', 'Add support for additional file formats'),
+                ('logging\\.|logger\\.', 'Add structured logging for better analytics')
+            ],
+            'security': [
+                ('subprocess\\.', 'Enhance subprocess security checks'),
+                ('eval\\(|exec\\(', 'Replace dangerous eval/exec functions'),
+                ('\\.read_csv\\(|\\.read_json\\(', 'Add input validation for data loading'),
+                ('jwt\\.|token', 'Improve token security measures'),
+                ('\\.execute\\(', 'Add SQL injection protection')
+            ],
+            'testing': [
+                ('def test_', 'Expand test coverage'),
+                ('@pytest', 'Add more test assertions'),
+                ('assert ', 'Improve test assertions with better messages'),
+                ('mock\\.|patch\\.', 'Enhance test mocking strategies')
+            ],
+            'documentation': [
+                ('def [^\\"\']*\\):', 'Add missing function docstring'),
+                ('class [^\\"\']*:', 'Add missing class docstring'),
+                (':[^\\n]*\\n\\s*[^\\s#]', 'Add missing parameter documentation'),
+                ('return [^#\\n]*', 'Document return values')
+            ]
+        }
 
     def generate_goals(self, num_goals: int=5, output_file: Optional[Union[str, Path]]=None, max_per_category: int=2) -> List[ImprovementGoal]:
         """
@@ -53,16 +104,35 @@ class GoalGenerator:
         self.logger.info(f'Generating up to {num_goals} improvement goals...')
         python_files = self._find_python_files()
         self.logger.info(f'Found {len(python_files)} Python files to analyze')
+        self.logger.debug(f'Python files: {[str(f) for f in python_files]}')
         opportunities = []
         for file_path in python_files:
             try:
-                module_path = os.path.relpath(file_path, self.base_path)
+                module_path = str(Path(file_path).relative_to(self.base_path)).replace("\\", "/")
+                if not module_path:
+                    self.logger.warning(f"Invalid module_path for {file_path}")
+                    continue
                 self.logger.debug(f'Analyzing {module_path}...')
                 module_info = self.code_analyzer.analyze_module(module_path)
+                self.logger.debug(f'Module info: {module_info}')
+                if not module_info.get('module_path') or not module_info.get('content'):
+                    self.logger.warning(f"Invalid module_info for {module_path}: missing module_path or content")
+                    continue
                 module_opportunities = self._find_opportunities_in_module(module_info)
+                self.logger.debug(f'Found {len(module_opportunities)} opportunities in {module_path}')
                 opportunities.extend(module_opportunities)
             except Exception as e:
                 self.logger.error(f'Error analyzing {file_path}: {str(e)}')
+        self.logger.debug(f'Raw opportunities: {opportunities}')
+        # Filter invalid opportunities
+        valid_opportunities = [
+            opp for opp in opportunities
+            if opp.get('module_path') and opp.get('description')
+        ]
+        self.logger.debug(f'Valid opportunities: {valid_opportunities}')
+        if not valid_opportunities:
+            self.logger.warning('No valid opportunities found')
+        opportunities = valid_opportunities
         opportunities.sort(key=lambda x: x['score'], reverse=True)
         selected_opportunities = []
         category_counts = {}
@@ -95,7 +165,17 @@ class GoalGenerator:
                             break
         goals = []
         for opportunity in selected_opportunities[:num_goals]:
-            goal = ImprovementGoal(target_module=opportunity['module_path'], target_function=opportunity.get('function_name'), description=opportunity['description'], performance_target=opportunity.get('performance_target'), priority=min(5, max(1, round(opportunity['score']))))
+            if not opportunity.get('module_path') or not opportunity.get('description'):
+                self.logger.warning(f"Skipping invalid opportunity: {opportunity}")
+                continue
+            goal = ImprovementGoal(
+                target_module=opportunity['module_path'],
+                target_function=opportunity.get('function_name'),
+                description=opportunity['description'],
+                performance_target=opportunity.get('performance_target'),
+                priority=min(5, max(1, round(opportunity['score'])))
+            )
+            self.logger.debug(f'Generated goal: {goal.to_dict()}')
             goals.append(goal)
         self.logger.info(f'Generated {len(goals)} improvement goals')
         if output_file:
@@ -119,6 +199,7 @@ class GoalGenerator:
                     if 'goal_generator.py' in str(file_path):
                         continue
                     python_files.append(file_path)
+        self.logger.debug(f'Found python files: {[str(f) for f in python_files]}')
         return python_files
 
     def _find_opportunities_in_module(self, module_info: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -127,6 +208,7 @@ class GoalGenerator:
         content = module_info.get('content', '')
         module_path = module_info.get('module_path', '')
         if not content or not module_path:
+            self.logger.warning(f'Empty content or module_path for {module_path}')
             return []
         found_patterns = set()
         for category, patterns in self.patterns.items():
@@ -145,7 +227,16 @@ class GoalGenerator:
                     description = self._generate_description(description_template, category, module_path, function_name, context_str)
                     score = self._calculate_opportunity_score(category, context_str, function_name, module_info)
                     performance_target = self._generate_performance_target(category, description)
-                    opportunities.append({'module_path': module_path, 'function_name': function_name, 'line': line_num, 'category': category, 'description': description, 'score': score, 'performance_target': performance_target, 'pattern_key': pattern_key})
+                    opportunities.append({
+                        'module_path': module_path,
+                        'function_name': function_name,
+                        'line': line_num,
+                        'category': category,
+                        'description': description,
+                        'score': score,
+                        'performance_target': performance_target,
+                        'pattern_key': pattern_key
+                    })
         for function_info in module_info.get('functions', []):
             complexity = function_info.get('complexity', {})
             cyclomatic_complexity = complexity.get('cyclomatic_complexity', 0)
@@ -153,7 +244,16 @@ class GoalGenerator:
             if cyclomatic_complexity > 10 or line_count > 100:
                 description = f'Refactor complex function {function_info['name']} '
                 description += f'(complexity: {cyclomatic_complexity}, lines: {line_count})'
-                opportunities.append({'module_path': module_path, 'function_name': function_info['name'], 'line': function_info['ast_node'].lineno, 'category': 'maintainability', 'description': description, 'score': min(5, cyclomatic_complexity / 5 + line_count / 50), 'performance_target': None})
+                opportunities.append({
+                    'module_path': module_path,
+                    'function_name': function_info['name'],
+                    'line': function_info['ast_node'].lineno,
+                    'category': 'maintainability',
+                    'description': description,
+                    'score': min(5, cyclomatic_complexity / 5 + line_count / 50),
+                    'performance_target': None
+                })
+        self.logger.debug(f'Opportunities for {module_path}: {opportunities}')
         return opportunities
 
     def _find_function_containing_line(self, module_info: Dict[str, Any], line_num: int) -> Optional[str]:
@@ -169,7 +269,25 @@ class GoalGenerator:
 
     def _generate_description(self, template: str, category: str, module_path: str, function_name: Optional[str], context: str) -> str:
         """Generate a specific improvement description."""
-        keywords = {'datetime': 'timestamp handling', 'weekday': 'weekend or weekday logic', 'monday|tuesday|wednesday|thursday|friday|saturday|sunday': 'day-specific logic', 'password': 'password handling', 'auth': 'authentication', 'login': 'login process', 'csv': 'CSV processing', 'json': 'JSON processing', 'xml': 'XML processing', 'append': 'list operations', 'range': 'loop', 'sleep': 'blocking operation', 'pandas': 'data processing', 'numpy': 'numerical operations', 'try|except': 'error handling', 'if': 'conditional logic', 'for|while': 'iteration'}
+        keywords = {
+            'datetime': 'timestamp handling',
+            'weekday': 'weekend or weekday logic',
+            'monday|tuesday|wednesday|thursday|friday|saturday|sunday': 'day-specific logic',
+            'password': 'password handling',
+            'auth': 'authentication',
+            'login': 'login process',
+            'csv': 'CSV processing',
+            'json': 'JSON processing',
+            'xml': 'XML processing',
+            'append': 'list operations',
+            'range': 'loop',
+            'sleep': 'blocking operation',
+            'pandas': 'data processing',
+            'numpy': 'numerical operations',
+            'try|except': 'error handling',
+            'if': 'conditional logic',
+            'for|while': 'iteration'
+        }
         focus = ''
         for keyword_pattern, description in keywords.items():
             if re.search(keyword_pattern, context, re.IGNORECASE):
@@ -180,7 +298,12 @@ class GoalGenerator:
             description = f'{template} in {function_name}() {focus}'
         else:
             description = f'{template} in {focus}'
-        category_prefixes = {'performance': 'Optimize ', 'reliability': 'Improve ', 'maintainability': 'Refactor ', 'features': 'Add '}
+        category_prefixes = {
+            'performance': 'Optimize ',
+            'reliability': 'Improve ',
+            'maintainability': 'Refactor ',
+            'features': 'Add '
+        }
         return f'{category_prefixes.get(category, '')}{description}'
 
     def _calculate_opportunity_score(self, category: str, context: str, function_name: Optional[str], module_info: Dict[str, Any]) -> float:
@@ -188,7 +311,12 @@ class GoalGenerator:
         Calculate a score for an improvement opportunity.
         Higher score = higher priority.
         """
-        category_scores = {'performance': 3.0, 'reliability': 4.0, 'maintainability': 2.0, 'features': 3.5}
+        category_scores = {
+            'performance': 3.0,
+            'reliability': 4.0,
+            'maintainability': 2.0,
+            'features': 3.5
+        }
         score = category_scores.get(category, 3.0)
         if 'error' in context or 'exception' in context:
             score += 1.0
@@ -230,15 +358,16 @@ async def main():
     base_path = Path(args.path) if args.path else None
     goal_generator = GoalGenerator(base_path)
     goals = goal_generator.generate_goals(num_goals=args.count, output_file=args.output)
-    logger.info('{}', (f'Generated {len(goals)} improvement goals:',))
+    logger.info(f'Generated {len(goals)} improvement goals:')
     for i, goal in enumerate(goals):
-        logger.info('{}', (f'{i + 1}. [{goal.priority}] {goal.description}',))
-        logger.info('{}', (f'   Module: {goal.target_module}',))
+        logger.info(f'{i + 1}. [{goal.priority}] {goal.description}')
+        logger.info(f'   Module: {goal.target_module}')
         if goal.target_function:
-            logger.info('{}', (f'   Function: {goal.target_function}',))
+            logger.info(f'   Function: {goal.target_function}')
         if goal.performance_target:
-            logger.info('{}', (f'   Target: {goal.performance_target}',))
+            logger.info(f'   Target: {goal.performance_target}')
         logger.info('')
+
 if __name__ == '__main__':
     import asyncio
     asyncio.run(main())

@@ -26,7 +26,6 @@ class CodeAnalyzer:
         
     def should_skip_file(self, file_path: str) -> bool:
         """Determine if a file should be skipped during analysis."""
-        # Skip files in virtual environments and other generated code
         skip_patterns = [
             '.venv/', 
             'site-packages/',
@@ -46,7 +45,6 @@ class CodeAnalyzer:
         Returns:
             Dict containing module analysis information
         """
-        # Skip analysis for virtual environment files
         if self.should_skip_file(module_path):
             self.logger.debug(f"Skipping virtual environment module: {module_path}")
             return {
@@ -61,25 +59,43 @@ class CodeAnalyzer:
         try:
             full_path = self.base_path / module_path
             if not full_path.exists():
-                raise CodeAnalysisError(f"Module not found: {full_path}")
+                self.logger.warning(f"Module not found: {full_path}")
+                return {
+                    "module_path": str(module_path),
+                    "content": "",
+                    "imports": [],
+                    "classes": [],
+                    "functions": [],
+                    "dependencies": []
+                }
             
             self.logger.info(f"Analyzing module: {module_path}")
             
             # Read file content
             content = utils.read_file(full_path)
+            self.logger.debug(f"Module content length: {len(content)} chars")
             
             # Parse AST
             try:
                 tree = ast.parse(content)
+                self.logger.debug(f"AST parsed with {len(tree.body)} top-level nodes")
             except SyntaxError as e:
-                raise CodeAnalysisError(f"Syntax error in {module_path}: {str(e)}")
+                self.logger.error(f"Syntax error in {module_path}: {str(e)}")
+                return {
+                    "module_path": str(module_path),
+                    "content": content,
+                    "imports": [],
+                    "classes": [],
+                    "functions": [],
+                    "dependencies": []
+                }
             
             # Extract module info
             imports = self._extract_imports(tree)
             classes = self._extract_classes(tree)
             functions = self._extract_functions(tree)
             
-            return {
+            module_info = {
                 "module_path": str(module_path),
                 "content": content,
                 "imports": imports,
@@ -87,10 +103,19 @@ class CodeAnalyzer:
                 "functions": functions,
                 "dependencies": self._analyze_dependencies(imports)
             }
+            self.logger.debug(f"Module info: {module_info}")
+            return module_info
             
         except Exception as e:
             self.logger.error(f"Error analyzing module {module_path}: {str(e)}")
-            raise CodeAnalysisError(f"Failed to analyze module {module_path}: {str(e)}")
+            return {
+                "module_path": str(module_path),
+                "content": "",
+                "imports": [],
+                "classes": [],
+                "functions": [],
+                "dependencies": []
+            }
     
     def analyze_function(self, module_path: str, function_name: str) -> Dict[str, Any]:
         """
@@ -113,9 +138,8 @@ class CodeAnalyzer:
                 break
         
         if not target_func:
-            raise CodeAnalysisError(
-                f"Function '{function_name}' not found in module '{module_path}'"
-            )
+            self.logger.warning(f"Function '{function_name}' not found in module '{module_path}'")
+            return {"module_info": module_info, "function_info": {}}
         
         # Enhance function info with call graph and complexity metrics
         target_func["complexity"] = self._analyze_complexity(target_func["ast_node"])
@@ -148,6 +172,7 @@ class CodeAnalyzer:
                         "asname": name.asname
                     })
         
+        self.logger.debug(f"Extracted imports: {imports}")
         return imports
     
     def _extract_classes(self, tree: ast.Module) -> List[Dict[str, Any]]:
@@ -173,6 +198,7 @@ class CodeAnalyzer:
                     "ast_node": node
                 })
         
+        self.logger.debug(f"Extracted classes: {classes}")
         return classes
     
     def _extract_functions(self, tree: ast.Module) -> List[Dict[str, Any]]:
@@ -188,6 +214,7 @@ class CodeAnalyzer:
                     "ast_node": node
                 })
         
+        self.logger.debug(f"Extracted functions: {functions}")
         return functions
     
     def _analyze_dependencies(self, imports: List[Dict[str, Any]]) -> List[str]:
@@ -200,13 +227,16 @@ class CodeAnalyzer:
             elif imp["type"] == "import_from":
                 dependencies.append(imp["module"])
         
-        return list(set(dependencies))
+        dependencies = list(set(dependencies))
+        self.logger.debug(f"Dependencies: {dependencies}")
+        return dependencies
     
     def _analyze_complexity(self, node: ast.AST) -> Dict[str, int]:
         """Analyze code complexity metrics for a function."""
         visitor = ComplexityVisitor()
         visitor.visit(node)
         
+        self.logger.debug(f"Complexity metrics: {visitor.complexity}, lines: {visitor.line_count}")
         return {
             "cyclomatic_complexity": visitor.complexity,
             "line_count": visitor.line_count,
@@ -218,6 +248,7 @@ class CodeAnalyzer:
         """Extract function calls made within a function."""
         visitor = FunctionCallVisitor()
         visitor.visit(node)
+        self.logger.debug(f"Function calls: {visitor.calls}")
         return visitor.calls
     
     def _get_name(self, node: ast.AST) -> str:
@@ -241,29 +272,37 @@ class ComplexityVisitor(ast.NodeVisitor):
     def visit_If(self, node: ast.If) -> None:
         self.complexity += 1
         self.branch_count += 1
+        self.update_line_count(node)
         self.generic_visit(node)
     
     def visit_For(self, node: ast.For) -> None:
         self.complexity += 1
         self.branch_count += 1
+        self.update_line_count(node)
         self.generic_visit(node)
     
     def visit_While(self, node: ast.While) -> None:
         self.complexity += 1
         self.branch_count += 1
+        self.update_line_count(node)
         self.generic_visit(node)
     
     def visit_BoolOp(self, node: ast.BoolOp) -> None:
         self.complexity += len(node.values) - 1
+        self.update_line_count(node)
         self.generic_visit(node)
     
     def visit_Return(self, node: ast.Return) -> None:
         self.return_count += 1
+        self.update_line_count(node)
         self.generic_visit(node)
     
+    def update_line_count(self, node: ast.AST) -> None:
+        if hasattr(node, 'end_lineno'):
+            self.line_count = max(self.line_count, node.end_lineno)
+    
     def generic_visit(self, node: ast.AST) -> None:
-        if hasattr(node, 'lineno'):
-            self.line_count = max(self.line_count, node.lineno)
+        self.update_line_count(node)
         super().generic_visit(node)
 
 

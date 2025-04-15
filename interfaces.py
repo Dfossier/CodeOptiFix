@@ -10,8 +10,9 @@ from pathlib import Path
 class ImprovementGoal:
     """Representation of an improvement goal from the Performance Analyzer."""
     target_module: str  # Path to the module to improve
-    target_function: Optional[str] = None  # Function to improve (if applicable)
     description: str = ""  # Description of the improvement goal
+    improvement_type: str = ""  # Type of transformation (e.g., replace_print_with_logging)
+    target_function: Optional[str] = None  # Function to improve (if applicable)
     performance_target: Optional[str] = None  # e.g., "<100ms runtime"
     priority: int = 1  # Priority level (1-5)
     
@@ -20,8 +21,9 @@ class ImprovementGoal:
         """Create an ImprovementGoal instance from a dictionary."""
         return cls(
             target_module=data["target_module"],
-            target_function=data.get("target_function"),
             description=data.get("description", ""),
+            improvement_type=data.get("type", ""),
+            target_function=data.get("target_function"),
             performance_target=data.get("performance_target"),
             priority=data.get("priority", 1)
         )
@@ -30,8 +32,9 @@ class ImprovementGoal:
         """Convert to dictionary representation."""
         return {
             "target_module": self.target_module,
-            "target_function": self.target_function,
             "description": self.description,
+            "type": self.improvement_type,  # Using 'type' in the dict for backward compatibility
+            "target_function": self.target_function,
             "performance_target": self.performance_target,
             "priority": self.priority
         }

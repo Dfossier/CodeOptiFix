@@ -28,11 +28,12 @@ class GoalValidator:
         Returns:
             Dictionary with validation results
         """
-        self.logger.info(f"Validating goal: {goal.get('description', 'unknown')}")
+        description = goal.get('description', 'unknown')
+        self.logger.info(f"Validating goal: {description}")
         validation = {
             "is_valid": False,
             "reason": "",
-            "description": goal.get("description", "")
+            "description": description
         }
         
         try:
@@ -48,8 +49,21 @@ class GoalValidator:
             self.logger.debug(f"Goal target_module: {normalized_target}")
             self.logger.debug(f"Tracked files: {tracked_files}")
             
+            # Fallback for empty tracked files
+            known_files = ['utils.py', 'self_improvement_loop.py', 'code_analyzer.py', 'goal_generator.py']
+            if not tracked_files:
+                self.logger.warning("No tracked files in CodeStateManager, using known files")
+                if normalized_target in known_files or (self.base_path / normalized_target).exists():
+                    validation["is_valid"] = True
+                    self.logger.info(f"Goal valid: {normalized_target} matches known file")
+                    return validation
+            
             # Check if target_module matches any tracked file
-            if normalized_target in tracked_files or any(normalized_target == str(Path(f).relative_to(self.base_path)).replace("\\", "/") for f in tracked_files):
+            if (normalized_target in tracked_files or 
+                any(normalized_target == str(Path(f).relative_to(self.base_path)).replace("\\", "/") 
+                    for f in tracked_files)):
+                if not description:
+                    self.logger.warning(f"Goal has empty description but valid module: {normalized_target}")
                 validation["is_valid"] = True
                 self.logger.info(f"Goal valid: {normalized_target} found in codebase")
             else:

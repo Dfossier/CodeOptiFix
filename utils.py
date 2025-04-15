@@ -39,7 +39,7 @@ def setup_logging(module_name: str) -> logging.Logger:
         console_handler.setFormatter(formatter)
         
         # Set console handler to INFO level to reduce verbosity in terminal
-        console_handler.setLevel(logging.ERROR)
+        console_handler.setLevel(logging.DEBUG)
         
         logger.addHandler(file_handler)
         logger.addHandler(console_handler)

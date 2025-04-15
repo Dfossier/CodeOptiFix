@@ -1,7 +1,7 @@
 """
 Goal Prioritizer for the Self-Improving AI Assistant.
 
-Prioritizes goals based on impact, feasibility, and historical outcomes.
+Prioritizes goals based on impact, feasibility, and codebase metrics.
 """
 import logging
 from typing import List, Dict, Any
@@ -57,7 +57,7 @@ class GoalPrioritizer:
                         self.logger.debug(f"Skipping invalid goal: {goal.get('description', 'unknown')}")
                         continue
                     
-                    # Calculate priority score
+                    # Calculate priority score based on file metrics
                     file_path = goal.get("target_module", "")
                     file_state = self.code_state_manager.get_file_state(file_path)
                     
@@ -66,13 +66,13 @@ class GoalPrioritizer:
                         metrics = file_state.get("metrics", {})
                         if goal.get("type") == "replace_print_with_logging":
                             impact_score += metrics.get("print_statements", 0) * 0.1
+                            self.logger.debug(f"Print statements impact for {file_path}: {metrics.get('print_statements', 0)}")
                         elif goal.get("type") == "optimize_string_formatting":
                             impact_score += metrics.get("string_concatenations", 0) * 0.2
+                            self.logger.debug(f"Concatenations impact for {file_path}: {metrics.get('string_concatenations', 0)}")
                     
-                    # Adjust based on past outcomes
-                    past_outcomes = self.outcome_analyzer.get_outcomes_for_goal(goal)
-                    success_rate = sum(1 for outcome in past_outcomes if outcome.get("status") == "success") / (len(past_outcomes) + 1)
-                    priority_score = priority * impact_score * (0.5 + success_rate)
+                    # Base priority score on priority and impact
+                    priority_score = priority * impact_score
                     
                     prioritized_goal = {
                         "goal": goal,

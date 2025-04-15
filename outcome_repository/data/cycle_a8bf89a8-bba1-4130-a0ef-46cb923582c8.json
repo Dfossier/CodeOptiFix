@@ -1,0 +1,14 @@
+{
+  "cycle_id": "a8bf89a8-bba1-4130-a0ef-46cb923582c8",
+  "timestamp": "2025-04-13T12:42:03.698223",
+  "status": "error",
+  "results": {
+    "cycle_id": "a8bf89a8-bba1-4130-a0ef-46cb923582c8",
+    "start_time": "2025-04-13T12:42:03.543837",
+    "end_time": "2025-04-13T12:42:03.640717",
+    "goals": [],
+    "transformations": [],
+    "status": "no_changes",
+    "metadata": {}
+  }
+}

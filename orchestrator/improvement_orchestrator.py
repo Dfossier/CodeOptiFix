@@ -1,232 +1,190 @@
 """
 Improvement Orchestrator for the Self-Improving AI Assistant.
 
-Coordinates improvement cycles by integrating goal generation, validation,
-prioritization, code updates, and outcome analysis.
+Coordinates the execution of improvement cycles.
 """
 import logging
-from typing import Dict, List, Any, Optional
 import asyncio
-from datetime import datetime
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import uuid
+from datetime import datetime
 
+from interfaces import ImprovementGoal
+from observatory.code_state_manager import CodeStateManager
 from orchestrator.cycle_planner import CyclePlanner
-from goal_intelligence.goal_validator import GoalValidator
-from goal_intelligence.goal_refiner import GoalRefiner
-from goal_intelligence.goal_prioritizer import GoalPrioritizer
 from code_updater import CodeUpdater
-from outcome_repository.outcome_analyzer import OutcomeAnalyzer
 from outcome_repository.outcome_logger import OutcomeLogger
+from outcome_repository.outcome_analyzer import OutcomeAnalyzer
 from utils import setup_logging
+from goal_generator import GoalGenerator
 
 logger = setup_logging(__name__)
-logger.info("Loaded improvement_orchestrator.py version: 2025-04-12-fix-refine-goal")
 
 class ImprovementOrchestrator:
-    def __init__(self, cycle_planner: CyclePlanner):
+    def __init__(
+        self,
+        code_state_manager: CodeStateManager,
+        cycle_planner: CyclePlanner,
+        code_updater: CodeUpdater,
+        outcome_logger: OutcomeLogger,
+        outcome_analyzer: OutcomeAnalyzer,
+        base_path: Optional[Path] = None
+    ):
+        self.code_state_manager = code_state_manager
         self.cycle_planner = cycle_planner
-        self.goal_validator = GoalValidator(
-            code_state_manager=cycle_planner.code_state_manager
-        )
-        self.goal_refiner = GoalRefiner(
-            code_state_manager=cycle_planner.code_state_manager
-        )
-        self.goal_prioritizer = GoalPrioritizer(
-            code_state_manager=cycle_planner.code_state_manager,
-            outcome_analyzer=cycle_planner.outcome_analyzer
-        )
-        self.code_updater = CodeUpdater(base_path=cycle_planner.base_path)
-        self.outcome_logger = OutcomeLogger(base_path=cycle_planner.base_path)
-        self.outcome_analyzer = cycle_planner.outcome_analyzer
+        self.code_updater = code_updater
+        self.outcome_logger = outcome_logger
+        self.outcome_analyzer = outcome_analyzer
+        self.base_path = base_path or Path.cwd()
         self.logger = logger
     
-    async def recommend_goals(self, goals_file: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Generate and validate improvement goals."""
-        self.logger.debug("Entering recommend_goals")
-        try:
-            recommendations = []
-            if goals_file:
-                self.logger.debug(f"Loading goals from file: {goals_file}")
-                import json
-                with open(goals_file, 'r', encoding='utf-8') as f:
-                    recommendations = json.load(f)
-            else:
-                self.logger.debug("Awaiting code_state_manager.recommend_transformations")
-                recommendations = await self.cycle_planner.code_state_manager.recommend_transformations()
-                self.logger.debug(f"Received {len(recommendations)} recommendations")
-            
-            # Validate and refine goals
-            validated_goals = []
-            for goal in recommendations:
-                try:
-                    # Ensure goal is a dict and has required fields
-                    if not isinstance(goal, dict):
-                        self.logger.error(f"Invalid goal format, expected dict, got: {type(goal)} - Data: {goal}")
-                        continue
-                    goal_dict = goal.get("goal", goal)  # Handle nested goal
-                    if not isinstance(goal_dict, dict) or not goal_dict.get("target_module"):
-                        self.logger.error(f"Malformed goal, missing target_module: {goal_dict}")
-                        continue
-                    self.logger.debug(f"Validating goal: {goal_dict.get('description', 'unknown')}")
-                    validation = self.goal_validator.validate_goal(goal_dict)
-                    self.logger.debug(f"Validation result: {validation}")
-                    if validation.get("is_valid", False):
-                        self.logger.debug(f"Refining goal: {goal_dict.get('description', 'unknown')}")
-                        # Create goal_validation dict for refine_goal
-                        goal_validation = {
-                            "goal": goal_dict,
-                            "is_valid": validation.get("is_valid", False),
-                            "reason": validation.get("reason", ""),
-                            "description": validation.get("description", goal_dict.get("description", ""))
-                        }
-                        refined_validation = self.goal_refiner.refine_goal(goal_validation)
-                        self.logger.debug(f"Refinement result: {refined_validation}")
-                        if refined_validation.get("is_valid", False):
-                            validated_goals.append({
-                                "goal": refined_validation.get("goal", goal_dict),
-                                "validation": refined_validation
-                            })
-                        else:
-                            self.logger.debug(f"Goal refinement failed: {refined_validation.get('reason', 'unknown')}")
-                    else:
-                        self.logger.debug(f"Goal invalid: {goal_dict.get('description', 'unknown')} - Reason: {validation.get('reason', 'unknown')}")
-                except Exception as e:
-                    self.logger.error(f"Error processing goal: {str(e)} - Goal data: {goal}")
-                    continue
-            
-            self.logger.debug(f"Returning {len(validated_goals)} validated goals")
-            return validated_goals
-        except Exception as e:
-            self.logger.error(f"Error recommending goals: {str(e)}")
-            return []
-        finally:
-            self.logger.debug("Exiting recommend_goals")
-    
-    async def execute_cycle(self, recommendations: List[Dict[str, Any]], metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute_cycle(self, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute a single improvement cycle.
         
         Args:
-            recommendations: List of recommended goals with validations
-            metadata: Optional metadata about the cycle
+            metadata: Optional metadata for the cycle
             
         Returns:
-            Dictionary summarizing cycle results
+            Dictionary containing cycle results
         """
-        self.logger.debug("Entering execute_cycle")
         cycle_id = str(uuid.uuid4())
-        start_time = datetime.now()
         self.logger.info(f"Starting improvement cycle {cycle_id}")
         
         try:
+            # Get transformation recommendations
+            self.logger.info("Fetching transformation recommendations")
+            try:
+                goal_generator = GoalGenerator(base_path=self.base_path)
+                recommendations = goal_generator.generate_goals(num_goals=5)
+                self.logger.info(f"Received {len(recommendations)} recommendations")
+                self.logger.info(f"Recommendations: {[r.to_dict() for r in recommendations]}")
+                # Convert ImprovementGoal to dict for CyclePlanner
+                recommendations_dict = [r.to_dict() for r in recommendations]
+            except Exception as e:
+                self.logger.error(f"Error fetching recommendations: {type(e).__name__} - {e}")
+                raise
+            
             # Plan the cycle
-            self.logger.debug("Awaiting cycle_planner.plan_cycle")
-            plan = await self.cycle_planner.plan_cycle(recommendations, metadata)
-            self.logger.debug(f"Got plan with {len(plan.get('goals', []))} goals")
+            self.logger.info("Planning cycle with cycle_planner.plan_cycle()")
+            try:
+                plan = await self.cycle_planner.plan_cycle(recommendations_dict, metadata)
+                self.logger.info(f"Cycle planning completed with status: {plan.get('status', 'unknown')}")
+                if plan.get("status") == "error":
+                    self.logger.error(f"Cycle planning failed: {plan.get('error', 'Unknown error')}")
+                    return plan
+            except Exception as e:
+                self.logger.error(f"Error planning cycle: {type(e).__name__} - {e}")
+                raise
+            
+            # Execute transformations
+            results = {
+                "cycle_id": cycle_id,
+                "timestamp": datetime.now().isoformat(),
+                "goals": [],
+                "transformations": [],
+                "status": "success"
+            }
+            
             prioritized_goals = plan.get("goals", [])
+            self.logger.info(f"Processing {len(prioritized_goals)} prioritized goals")
             
-            # Prepare improvement goals for code updater
-            improvement_goals = []
-            for entry in prioritized_goals:
-                goal_dict = entry.get("goal", {})
-                validation = entry.get("validation", {})
+            for i, prioritized_goal in enumerate(prioritized_goals):
+                self.logger.info(f"Processing goal {i+1} of {len(prioritized_goals)}")
+                goal_dict = prioritized_goal.get("goal", {})
+                self.logger.info(f"Goal details: {goal_dict}")
                 try:
-                    from interfaces import ImprovementGoal
+                    self.logger.info(f"Creating ImprovementGoal for: {goal_dict.get('description', 'unknown')}")
+                    
+                    # Log all parameters for debugging
+                    target_module = goal_dict.get("target_module", "")
+                    description = goal_dict.get("description", "")
+                    improvement_type = goal_dict.get("type", "")
+                    target_function = goal_dict.get("target_function")
+                    performance_target = goal_dict.get("performance_target")
+                    priority = goal_dict.get("priority", 1)
+                    
+                    self.logger.info(f"ImprovementGoal parameters: target_module={target_module}, "
+                                 f"description={description}, improvement_type={improvement_type}, "
+                                 f"target_function={target_function}, performance_target={performance_target}, "
+                                 f"priority={priority}")
+                    
                     improvement_goal = ImprovementGoal(
-                        target_module=goal_dict.get("target_module", ""),
-                        description=goal_dict.get("description", ""),
-                        priority=goal_dict.get("priority", 1),
-                        type=goal_dict.get("type", ""),
-                        target_function=goal_dict.get("target_function"),
-                        performance_target=goal_dict.get("performance_target")
+                        target_module=target_module,
+                        description=description,
+                        improvement_type=improvement_type,
+                        target_function=target_function,
+                        performance_target=performance_target,
+                        priority=priority
                     )
-                    improvement_goals.append(improvement_goal)
-                    self.logger.debug(f"Created ImprovementGoal: {goal_dict.get('description', 'unknown')}")
+                    self.logger.info(f"Created ImprovementGoal: {improvement_goal.to_dict()}")
+                    results["goals"].append(improvement_goal.to_dict())
+                    
+                    self.logger.info(f"Applying transformation {improvement_goal.improvement_type} to {improvement_goal.target_module}")
+                    try:
+                        transformation_result = await self.code_updater.update_codebase([improvement_goal])
+                        self.logger.info(f"code_updater.update_codebase completed")
+                        results["transformations"].append(transformation_result)
+                        self.logger.info(f"Transformation result status: {transformation_result[0].get('status', 'unknown') if isinstance(transformation_result, list) else transformation_result.get('status', 'unknown')}")
+                    except Exception as e:
+                        self.logger.error(f"Error in code_updater.update_codebase: {type(e).__name__} - {e}")
+                        raise
+                    
                 except Exception as e:
-                    self.logger.error(f"Error creating ImprovementGoal: {str(e)}")
-                    continue
-            
-            # Execute code updates
-            transformations = []
-            if improvement_goals:
-                self.logger.debug(f"Awaiting code_updater.update_codebase with {len(improvement_goals)} goals")
-                try:
-                    transformation_results = await self.code_updater.update_codebase(improvement_goals)
-                    transformations = transformation_results
-                    self.logger.debug(f"Got {len(transformations)} transformation results")
-                except Exception as e:
-                    self.logger.error(f"Error applying transformations: {str(e)}")
-                    transformations.append({
+                    self.logger.error(f"Error processing goal {goal_dict.get('description', 'unknown')}: {type(e).__name__} - {e}")
+                    results["transformations"].append({
                         "status": "error",
-                        "message": str(e),
-                        "goal": {"description": "Code update failure"}
+                        "message": f"Failed to process goal: {str(e)}",
+                        "goal": goal_dict
                     })
-            else:
-                self.logger.warning("No valid goals to process")
+                    results["status"] = "partial_success"
             
             # Log outcomes
-            cycle_data = {
-                "cycle_id": cycle_id,
-                "start_time": start_time.isoformat(),
-                "end_time": datetime.now().isoformat(),
-                "goals": [g.to_dict() for g in improvement_goals],
-                "transformations": transformations,
-                "status": "success" if transformations and any(t.get("status") == "success" for t in transformations) else "no_changes",
-                "metadata": metadata or {}
-            }
-            
+            self.logger.info("Logging cycle outcomes")
             try:
-                self.logger.debug("Calling outcome_logger.log_cycle")
-                self.outcome_logger.log_cycle(cycle_data)
-                self.logger.debug("Calling outcome_analyzer.refresh_cache")
-                self.outcome_analyzer.refresh_cache()
+                self.outcome_logger.log_cycle(results)
+                self.logger.info("Outcomes logged successfully")
             except Exception as e:
-                self.logger.error(f"Error logging cycle: {str(e)}")
+                self.logger.error(f"Error logging outcomes: {type(e).__name__} - {e}")
+                # Continue despite error
             
-            # Update plan status
-            status = "success" if cycle_data["status"] == "success" else "error"
-            self.logger.debug(f"Finalizing plan with status: {status}")
-            self.cycle_planner.finalize_plan(status, cycle_data)
+            # Finalize plan
+            self.logger.info("Finalizing plan with cycle_planner.finalize_plan()")
+            try:
+                self.cycle_planner.finalize_plan(results.get("status", "success"), results)
+                self.logger.info("Plan finalized successfully")
+            except Exception as e:
+                self.logger.error(f"Error finalizing plan: {type(e).__name__} - {e}")
+                # Continue despite error
             
-            # Prepare results
-            results = {
-                "success": cycle_data["status"] == "success",
-                "cycle_id": cycle_id,
-                "goals_processed": len(improvement_goals),
-                "transformations": transformations,
-                "metadata": metadata or {}
-            }
-            
-            self.logger.debug(f"Completed improvement cycle {cycle_id}: {results['goals_processed']} goals processed")
+            self.logger.info(f"Cycle {cycle_id} completed with status {results['status']}")
             return results
         
         except Exception as e:
-            self.logger.error(f"Cycle {cycle_id} failed: {str(e)}")
-            error_result = {
-                "success": False,
+            self.logger.error(f"Cycle {cycle_id} failed: {type(e).__name__} - {e}")
+            self.logger.error(f"Exception details: {e}")
+            results = {
                 "cycle_id": cycle_id,
-                "goals_processed": 0,
-                "transformations": [{
-                    "status": "error",
-                    "message": str(e),
-                    "goal": {"description": "Cycle execution failure"}
-                }],
-                "metadata": metadata or {}
+                "timestamp": datetime.now().isoformat(),
+                "goals": [],
+                "transformations": [],
+                "status": "error",
+                "error": str(e)
             }
+            
             try:
-                self.outcome_logger.log_cycle({
-                    "cycle_id": cycle_id,
-                    "start_time": start_time.isoformat(),
-                    "end_time": datetime.now().isoformat(),
-                    "goals": [],
-                    "transformations": error_result["transformations"],
-                    "status": "error",
-                    "metadata": metadata or {}
-                })
-                self.cycle_planner.finalize_plan("error", error_result)
-            except Exception as log_e:
-                self.logger.error(f"Error logging failed cycle: {str(log_e)}")
-            return error_result
-        finally:
-            self.logger.debug("Exiting execute_cycle")
+                self.logger.info("Attempting to log error cycle")
+                self.outcome_logger.log_cycle(results)
+                self.logger.info("Error cycle logged successfully")
+            except Exception as log_err:
+                self.logger.error(f"Failed to log error cycle: {type(log_err).__name__} - {log_err}")
+            
+            try:
+                self.logger.info("Attempting to finalize error plan")
+                self.cycle_planner.finalize_plan("error", results)
+                self.logger.info("Error plan finalized successfully")
+            except Exception as plan_err:
+                self.logger.error(f"Failed to finalize error plan: {type(plan_err).__name__} - {plan_err}")
+                
+            return results
