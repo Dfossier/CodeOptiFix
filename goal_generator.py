@@ -168,10 +168,12 @@ class GoalGenerator:
             if not opportunity.get('module_path') or not opportunity.get('description'):
                 self.logger.warning(f"Skipping invalid opportunity: {opportunity}")
                 continue
+            improvement_type = self._map_to_improvement_type(opportunity['description'])
             goal = ImprovementGoal(
                 target_module=opportunity['module_path'],
                 target_function=opportunity.get('function_name'),
                 description=opportunity['description'],
+                improvement_type=improvement_type,
                 performance_target=opportunity.get('performance_target'),
                 priority=min(5, max(1, round(opportunity['score'])))
             )
@@ -302,7 +304,10 @@ class GoalGenerator:
             'performance': 'Optimize ',
             'reliability': 'Improve ',
             'maintainability': 'Refactor ',
-            'features': 'Add '
+            'features': 'Add ',
+            'security': 'Enhance ',
+            'testing': 'Improve ',
+            'documentation': 'Add '
         }
         return f'{category_prefixes.get(category, '')}{description}'
 
@@ -315,7 +320,10 @@ class GoalGenerator:
             'performance': 3.0,
             'reliability': 4.0,
             'maintainability': 2.0,
-            'features': 3.5
+            'features': 3.5,
+            'security': 4.5,
+            'testing': 3.0,
+            'documentation': 2.5
         }
         score = category_scores.get(category, 3.0)
         if 'error' in context or 'exception' in context:
@@ -346,6 +354,28 @@ class GoalGenerator:
         if 'data processing' in description.lower():
             return '<200ms execution time'
         return '<100ms execution time'
+
+    def _map_to_improvement_type(self, description: str) -> str:
+        """Map opportunity description to a transformation type."""
+        description_lower = description.lower()
+        if 'print with proper logging' in description_lower:
+            return 'replace_print_with_logging'
+        elif 'default value to dictionary get' in description_lower:
+            return 'add_dict_get_default'
+        elif 'structured logging for better analytics' in description_lower:
+            return 'add_structured_logging_conditional'
+        elif 'subprocess security checks' in description_lower:
+            return 'enhance_subprocess_security'
+        elif 'document return values' in description_lower:
+            return 'document_return_values'
+        elif 'exception handling' in description_lower:
+            return 'add_exception_handling'
+        elif 'string concatenation' in description_lower:
+            return 'optimize_string_formatting'
+        elif 'complex function' in description_lower:
+            return 'extract_function'
+        else:
+            return 'generic_improvement'
 
 async def main():
     """Command-line entry point."""

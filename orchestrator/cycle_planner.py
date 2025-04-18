@@ -49,7 +49,7 @@ class CyclePlanner:
         Plan a single improvement cycle.
         
         Args:
-            recommendations: List of recommended goals with validations
+            recommendations: List of recommended goals (dictionaries with target_module, description, etc.)
             metadata: Optional metadata for the cycle
             
         Returns:
@@ -59,57 +59,48 @@ class CyclePlanner:
         self.logger.debug(f"Planning cycle {cycle_id} with {len(recommendations)} recommendations")
         
         try:
-            # Normalize recommendations
-            normalized_validations = []
-            for rec in recommendations:
-                try:
-                    goal = rec.get("goal", {})
-                    validation = rec.get("validation", {})
-                    normalized = {
-                        "goal": {
-                            "target_module": goal.get("target_module", ""),
-                            "description": goal.get("description", ""),
-                            "type": goal.get("type", ""),
-                            "priority": goal.get("priority", 1),
-                            "target_function": goal.get("target_function"),
-                            "performance_target": goal.get("performance_target")
-                        },
-                        "is_valid": validation.get("is_valid", False),
-                        "reason": validation.get("reason", ""),
-                        "description": validation.get("description", goal.get("description", ""))
-                    }
-                    normalized_validations.append(normalized)
-                except Exception as e:
-                    self.logger.error(f"Error normalizing recommendation: {str(e)} - Data: {rec}")
-                    continue
+            # Log incoming recommendations for debugging
+            self.logger.debug(f"Received recommendations: {recommendations}")
             
-            self.logger.debug(f"Normalized {len(normalized_validations)} validations")
-            
-            # Validate goals
+            # Validate input recommendations
             validated_goals = []
-            for validation in normalized_validations:
+            for goal in recommendations:
+                if not isinstance(goal, dict) or "target_module" not in goal or "description" not in goal:
+                    self.logger.error(f"Invalid recommendation format, skipping: {goal}")
+                    continue
                 try:
-                    goal = validation.get("goal", {})
-                    self.logger.debug(f"Validating goal: {goal.get('description', 'unknown')}")
-                    validated = self.goal_validator.validate_goal(goal)
-                    validated["goal"] = goal
-                    validated["description"] = goal.get("description", "")
-                    validated_goals.append(validated)
+                    self.logger.debug(f"Validating goal: {goal}")
+                    validation_result = self.goal_validator.validate_goal(goal)
+                    if validation_result.get("is_valid"):
+                        # Create a new dictionary to avoid modifying the original
+                        validated_goal = {
+                            "target_module": str(goal["target_module"]),
+                            "description": str(goal["description"]),
+                            "type": goal.get("type", ""),
+                            "improvement_type": goal.get("improvement_type", goal.get("type", "")),
+                            "target_function": goal.get("target_function"),
+                            "performance_target": goal.get("performance_target"),
+                            "priority": goal.get("priority", 1)
+                        }
+                        validated_goals.append(validated_goal)
+                        self.logger.debug(f"Validated goal: {validated_goal}")
+                    else:
+                        self.logger.warning(f"Goal invalid: {goal.get('description', 'unknown')} - {validation_result.get('error', 'Unknown error')}")
                 except Exception as e:
                     self.logger.error(f"Error validating goal: {str(e)} - Goal: {goal}")
                     continue
             
-            self.logger.debug(f"Validated {len(validated_goals)} goals")
+            self.logger.debug(f"Validated {len(validated_goals)} goals: {validated_goals}")
             
             # Refine goals
             self.logger.debug("Calling goal_refiner.refine_goals")
             refined_validations = self.goal_refiner.refine_goals(validated_goals)
-            self.logger.debug(f"Refined {len(refined_validations)} validations")
+            self.logger.debug(f"Refined {len(refined_validations)} validations: {refined_validations}")
             
             # Prioritize goals
             self.logger.debug("Awaiting goal_prioritizer.prioritize_goals")
             prioritized_goals = await self.goal_prioritizer.prioritize_goals(refined_validations)
-            self.logger.debug(f"Prioritized {len(prioritized_goals)} goals")
+            self.logger.debug(f"Prioritized {len(prioritized_goals)} goals: {prioritized_goals}")
             
             # Prepare plan
             plan = {

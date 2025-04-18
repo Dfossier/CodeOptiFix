@@ -70,6 +70,7 @@ class ImprovementOrchestrator:
             self.logger.info("Planning cycle with cycle_planner.plan_cycle()")
             try:
                 plan = await self.cycle_planner.plan_cycle(recommendations_dict, metadata)
+                self.logger.debug(f"Cycle plan: {plan}")
                 self.logger.info(f"Cycle planning completed with status: {plan.get('status', 'unknown')}")
                 if plan.get("status") == "error":
                     self.logger.error(f"Cycle planning failed: {plan.get('error', 'Unknown error')}")
@@ -102,6 +103,8 @@ class ImprovementOrchestrator:
                     description = goal_dict.get("description", "")
                     improvement_type = goal_dict.get("type", "")
                     target_function = goal_dict.get("target_function")
+                   
+
                     performance_target = goal_dict.get("performance_target")
                     priority = goal_dict.get("priority", 1)
                     
@@ -144,7 +147,7 @@ class ImprovementOrchestrator:
             self.logger.info("Logging cycle outcomes")
             try:
                 self.outcome_logger.log_cycle(results)
-                self.logger.info("Outcomes logged successfully")
+                self.logger.info(" respectively outcomes logged successfully")
             except Exception as e:
                 self.logger.error(f"Error logging outcomes: {type(e).__name__} - {e}")
                 # Continue despite error

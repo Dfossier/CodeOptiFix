@@ -65,7 +65,7 @@ async def main(continuous: bool = False, interval: int = 3600) -> None:
         logger.info("GoalValidator initialized successfully")
         
         logger.info("Initializing GoalRefiner")
-        goal_refiner = GoalRefiner(code_state_manager=code_state_manager)
+        goal_refiner = GoalRefiner(base_path=base_path)
         logger.info("GoalRefiner initialized successfully")
         
         logger.info("Initializing GoalPrioritizer")

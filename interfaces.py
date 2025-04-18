@@ -19,10 +19,14 @@ class ImprovementGoal:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ImprovementGoal':
         """Create an ImprovementGoal instance from a dictionary."""
+        target_module = data.get("target_module")
+        # Convert target_module to string if it's a Path object
+        if isinstance(target_module, Path):
+            target_module = str(target_module)
         return cls(
-            target_module=data["target_module"],
-            description=data.get("description", ""),
-            improvement_type=data.get("type", ""),
+            target_module=target_module,
+            description=str(data.get("description", "")),  # Ensure string
+            improvement_type=data.get("type", data.get("improvement_type", "")),
             target_function=data.get("target_function"),
             performance_target=data.get("performance_target"),
             priority=data.get("priority", 1)
@@ -33,7 +37,7 @@ class ImprovementGoal:
         return {
             "target_module": self.target_module,
             "description": self.description,
-            "type": self.improvement_type,  # Using 'type' in the dict for backward compatibility
+            "type": self.improvement_type,  # Using 'type' for backward compatibility
             "target_function": self.target_function,
             "performance_target": self.performance_target,
             "priority": self.priority
